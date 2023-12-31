@@ -15,13 +15,32 @@ chat.addEventListener("submit", function (e) {
 });
 
 async function postNewMsg(user, text) {
-  // post to /poll a new message
-  // write code here
+  const data = { user, text };
+  const options = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  };
+
+  await fetch("/poll", options);
 }
 
 async function getNewMsgs() {
-  // poll the server
-  // write code here
+  let json;
+  try {
+    const res = await fetch("/poll");
+    json = await res.json();
+
+    if (res.status >= 400) throw new Error(res.status);
+    allChat = json.msg;
+    render();
+    failedTries = 0;
+  } catch (e) {
+    console.error(e);
+    failedTries++;
+  }
 }
 
 function render() {
@@ -39,3 +58,16 @@ const template = (user, msg) =>
 
 // make the first request
 getNewMsgs();
+
+const Backoff = 5000;
+let timeToMakeNextRequest = 0;
+let failedTries = 0;
+async function loop(time) {
+  if (time >= timeToMakeNextRequest) {
+    await getNewMsgs();
+    timeToMakeNextRequest = time + INTERVAL + failedTries * Backoff;
+  } //po trech pokuisech uz to neni pravdepodobne bug takze udelat velkej skok
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
